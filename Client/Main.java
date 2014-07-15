@@ -24,9 +24,9 @@ private static final String	FONT_NAME	= "Courier";
 private static final byte	FONT_WIDTH	= 12,
 				FONT_HEIGHT	= 20;
 private static final double	RATIO		= 4.0 / 3.0;
-private static final byte	LINE_LENGTH	= 40,
-				LINE_COUNT	= (byte)(LINE_LENGTH / RATIO),
-				LINE_STACK	= LINE_COUNT;
+private static final byte	LINE_LENGTH	= 40,				// x
+				LINE_COUNT	= (byte)(LINE_LENGTH / RATIO),	// y
+				LINE_STACK	= LINE_COUNT;			// z
 private static final short	SCREEN_WIDTH	= LINE_LENGTH * FONT_WIDTH << 1,
 				SCREEN_HEIGHT	= LINE_COUNT * FONT_HEIGHT;
 
@@ -134,6 +134,34 @@ throws Exception {
 
 	frame.setLocationRelativeTo(null);
 	frame.setVisible(true);
+
+	for (byte z = (byte)(LINE_STACK - 1); z >= 0; --z) {
+	for (byte y = (byte)(LINE_COUNT - 1); y >= 0; --y) {
+	for (byte x = (byte)(LINE_LENGTH - 1); x >= 0; --x) {
+	for (byte s = 1; s >= 0; --s) {
+
+	if (x == LINE_LENGTH - 1) {
+		if (y <= LINE_COUNT - 1 && y >= 0) {
+			if (y == LINE_COUNT - 1) {
+				board[s][x][y][z] = BOX_VB;
+				continue;
+			}
+			else if (y == 0) {
+				board[s][x][y][z] = BOX_VT;
+				continue;
+			}
+			else {
+				board[s][x][y][z] = BOX_V;
+				continue;
+			}
+		}
+	}
+
+	board[s][x][y][z] = DOT;
+	}
+	}
+	}
+	}
 }
 //``````````````````````````````````````````````````````````````````````````````
 
@@ -142,16 +170,17 @@ void draw()
 throws Exception {
 
 	final Graphics2D g = (Graphics2D)bufferStrategy.getDrawGraphics();
+	g.setBackground(BG_COLOR);
 	g.clearRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-	g.setColor(BG_COLOR);
 
 	for (byte z = (byte)(LINE_STACK - 1); z >= 0; --z) {
 	for (byte y = (byte)(LINE_COUNT - 1); y >= 0; --y) {
-	for (byte x = (byte)(LINE_LENGTH << 1 - 1); x >= 0; --x) {
+	for (byte x = (byte)(LINE_LENGTH - 1); x >= 0; --x) {
+	for (byte s = 1; s >= 0; --s) {
 
-	final short	left	= (short)(x * FONT_WIDTH),
+	final short	left	= (short)((s * LINE_LENGTH * FONT_WIDTH) + x * FONT_WIDTH),
 			top	= (short)(y * FONT_HEIGHT),
-			tile	= (short)(board[x % LINE_LENGTH][x >> 1][y][z] * FONT_WIDTH);
+			tile	= (short)(board[s][x][y][z] * FONT_WIDTH);
 
 	g.drawImage(
 	font,
@@ -165,6 +194,7 @@ throws Exception {
 	FONT_HEIGHT,
 	null);
 
+	}
 	}
 	}
 	}
