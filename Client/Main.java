@@ -2,6 +2,9 @@ import java.awt.Canvas;
 import java.awt.Color;
 import java.awt.Frame;
 import java.awt.Graphics2D;
+import java.awt.MouseInfo;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
@@ -20,23 +23,35 @@ private static final Color	BG_COLOR	= new Color(51, 153, 255);
 private static final String	FONT_NAME	= "Courier";
 private static final byte	FONT_WIDTH	= 12,
 				FONT_HEIGHT	= 20;
-private static final double	RATIO		= 4.0 / 1.5;
-private static final byte	LINE_LENGTH	= 80,
-				LINE_COUNT	= (byte)(LINE_LENGTH / RATIO);
-private static final short	SCREEN_WIDTH	= LINE_LENGTH * FONT_WIDTH,
+private static final double	RATIO		= 4.0 / 3.0;
+private static final byte	LINE_LENGTH	= 40,
+				LINE_COUNT	= (byte)(LINE_LENGTH / RATIO),
+				LINE_STACK	= LINE_COUNT;
+private static final short	SCREEN_WIDTH	= LINE_LENGTH * FONT_WIDTH << 1,
 				SCREEN_HEIGHT	= LINE_COUNT * FONT_HEIGHT;
 
 // character collection
 private static final byte	ASCII_OFFSET	= 32;
 private static final byte	EMPTY		= (byte)' ' - ASCII_OFFSET,
-				BOX		= (byte)'\\' - ASCII_OFFSET,
+				BOX_HL		= (byte)'Y' - ASCII_OFFSET,
+				BOX_H		= (byte)'Z' - ASCII_OFFSET,
+				BOX_HR		= (byte)'[' - ASCII_OFFSET,
+				BOX_VT		= (byte)'\\' - ASCII_OFFSET,
+				BOX_V		= (byte)']' - ASCII_OFFSET,
+				BOX_VB		= (byte)'^' - ASCII_OFFSET,
+				BOX		= (byte)'_' - ASCII_OFFSET,
 				DOT		= (byte)'.' - ASCII_OFFSET;
 
 /* Immutables *************************/
 private static final Frame 		frame	= new Frame(TITLE);
 private static final Canvas		canvas	= new Canvas();
 private static final BufferedImage	font	= readImageFile(FONT_NAME);
-private static final List<Byte>		board	= new ArrayList<>(LINE_LENGTH * LINE_COUNT);
+private static final byte[][][][]	board	=
+	new byte
+	[2]		// left/right side
+	[LINE_LENGTH]	// x
+	[LINE_COUNT]	// y
+	[LINE_STACK];	// z
 
 /* Mutables ***************************/
 private static boolean		unloading;
@@ -72,6 +87,22 @@ final String filename) {
 	e.printStackTrace();
 	return null;
 	}
+}
+//``````````````````````````````````````````````````````````````````````````````
+
+private static
+short getMouseX() {
+
+	return	(short)(MouseInfo.getPointerInfo().getLocation().getX()
+		- canvas.getLocationOnScreen().getX());
+}
+//``````````````````````````````````````````````````````````````````````````````
+        
+private static
+short getMouseY() {
+
+	return	(short)(MouseInfo.getPointerInfo().getLocation().getY()
+		- canvas.getLocationOnScreen().getY());
 }
 //``````````````````````````````````````````````````````````````````````````````
 
@@ -112,13 +143,15 @@ throws Exception {
 
 	final Graphics2D g = (Graphics2D)bufferStrategy.getDrawGraphics();
 	g.clearRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+	g.setColor(BG_COLOR);
 
+	for (byte z = (byte)(LINE_STACK - 1); z >= 0; --z) {
 	for (byte y = (byte)(LINE_COUNT - 1); y >= 0; --y) {
-	for (byte x = (byte)(LINE_LENGTH - 1); x >= 0; --x) {
+	for (byte x = (byte)(LINE_LENGTH << 1 - 1); x >= 0; --x) {
 
 	final short	left	= (short)(x * FONT_WIDTH),
 			top	= (short)(y * FONT_HEIGHT),
-			sx	= (short)(EMPTY * FONT_WIDTH);
+			tile	= (short)(board[x % LINE_LENGTH][x >> 1][y][z] * FONT_WIDTH);
 
 	g.drawImage(
 	font,
@@ -126,12 +159,13 @@ throws Exception {
 	top,			// top
 	left + FONT_WIDTH,	// right
 	top + FONT_HEIGHT,	// bottom
-	sx,
+	tile,
 	0,
-	sx + FONT_WIDTH,
+	tile + FONT_WIDTH,
 	FONT_HEIGHT,
 	null);
 
+	}
 	}
 	}
 
@@ -181,6 +215,17 @@ throws Exception {
 private static
 void unload()
 throws Exception {
+
+	for (byte z = (byte)(LINE_STACK - 1); z >= 0; --z) {
+	for (byte y = (byte)(LINE_COUNT - 1); y >= 0; --y) {
+	for (byte x = (byte)(LINE_LENGTH - 1); x >= 0; --x) {
+	for (byte s = 1; s >= 0; --s) {
+
+		board[s][x][y][z] = 0;
+	}
+	}
+	}
+	}
 
 	font.flush();
 	bufferStrategy.dispose();
