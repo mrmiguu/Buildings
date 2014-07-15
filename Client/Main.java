@@ -27,8 +27,10 @@ private static final double	RATIO		= 4.0 / 3.0;
 private static final byte	LINE_LENGTH	= 40,				// x
 				LINE_COUNT	= (byte)(LINE_LENGTH / RATIO),	// y
 				LINE_STACK	= LINE_COUNT;			// z
-private static final short	SCREEN_WIDTH	= LINE_LENGTH * FONT_WIDTH << 1,
-				SCREEN_HEIGHT	= LINE_COUNT * FONT_HEIGHT;
+private static final short	CAMERA_WIDTH	= LINE_LENGTH * FONT_WIDTH,
+				CAMERA_HEIGHT	= LINE_COUNT * FONT_HEIGHT;
+private static final short	CANVAS_WIDTH	= CAMERA_WIDTH << 1,
+				CANVAS_HEIGHT	= CAMERA_HEIGHT;
 
 // character collection
 private static final byte	ASCII_OFFSET	= 32;
@@ -48,7 +50,7 @@ private static final Canvas		canvas	= new Canvas();
 private static final BufferedImage	font	= readImageFile(FONT_NAME);
 private static final byte[][][][]	board	=
 	new byte
-	[2]		// left/right side
+	[2]		// camera(s)
 	[LINE_LENGTH]	// x
 	[LINE_COUNT]	// y
 	[LINE_STACK];	// z
@@ -110,7 +112,7 @@ private static
 void load()
 throws Exception {
 
-	canvas.setSize(SCREEN_WIDTH, SCREEN_HEIGHT);
+	canvas.setSize(CANVAS_WIDTH, CANVAS_HEIGHT);
 
 	frame.add(canvas);
 	frame.setResizable(false);
@@ -171,16 +173,16 @@ throws Exception {
 
 	final Graphics2D g = (Graphics2D)bufferStrategy.getDrawGraphics();
 	g.setBackground(BG_COLOR);
-	g.clearRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+	g.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
 	for (byte z = (byte)(LINE_STACK - 1); z >= 0; --z) {
 	for (byte y = (byte)(LINE_COUNT - 1); y >= 0; --y) {
 	for (byte x = (byte)(LINE_LENGTH - 1); x >= 0; --x) {
-	for (byte s = 1; s >= 0; --s) {
+	for (byte c = 1; c >= 0; --c) {
 
-	final short	left	= (short)((s * LINE_LENGTH * FONT_WIDTH) + x * FONT_WIDTH),
+	final short	left	= (short)((c * CAMERA_WIDTH) + x * FONT_WIDTH),
 			top	= (short)(y * FONT_HEIGHT),
-			tile	= (short)(board[s][x][y][z] * FONT_WIDTH);
+			tile	= (short)(board[c][x][y][z] * FONT_WIDTH);
 
 	g.drawImage(
 	font,
@@ -246,12 +248,12 @@ private static
 void unload()
 throws Exception {
 
-	for (byte z = (byte)(LINE_STACK - 1); z >= 0; --z) {
-	for (byte y = (byte)(LINE_COUNT - 1); y >= 0; --y) {
-	for (byte x = (byte)(LINE_LENGTH - 1); x >= 0; --x) {
-	for (byte s = 1; s >= 0; --s) {
+	for (byte z = (byte)(LINE_STACK - 1); z >= 0; --z) {	// depth
+	for (byte y = (byte)(LINE_COUNT - 1); y >= 0; --y) {	// height
+	for (byte x = (byte)(LINE_LENGTH - 1); x >= 0; --x) {	// width
+	for (byte c = 1; c >= 0; --c) {				// camera(s)
 
-		board[s][x][y][z] = 0;
+		board[c][x][y][z] = 0;
 	}
 	}
 	}
