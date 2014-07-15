@@ -29,31 +29,33 @@ private static final byte	LINE_LENGTH	= 40,				// x
 				LINE_STACK	= LINE_COUNT;			// z
 private static final short	CAMERA_WIDTH	= LINE_LENGTH * FONT_WIDTH,
 				CAMERA_HEIGHT	= LINE_COUNT * FONT_HEIGHT;
-private static final short	CANVAS_WIDTH	= CAMERA_WIDTH << 1,
-				CANVAS_HEIGHT	= CAMERA_HEIGHT;
+private static final short	SCREEN_WIDTH	= CAMERA_WIDTH << 1,
+				SCREEN_HEIGHT	= CAMERA_HEIGHT;
 
-// character collection
-private static final byte	ASCII_OFFSET	= 32;
-private static final byte	EMPTY		= (byte)' ' - ASCII_OFFSET,
-				BOX_HL		= (byte)'Y' - ASCII_OFFSET,
-				BOX_H		= (byte)'Z' - ASCII_OFFSET,
-				BOX_HR		= (byte)'[' - ASCII_OFFSET,
-				BOX_VT		= (byte)'\\' - ASCII_OFFSET,
-				BOX_V		= (byte)']' - ASCII_OFFSET,
-				BOX_VB		= (byte)'^' - ASCII_OFFSET,
-				BOX		= (byte)'_' - ASCII_OFFSET,
-				DOT		= (byte)'.' - ASCII_OFFSET;
+// block collection
+private static final Block	BLOCK_1x1_1	= new Block(),
+				BLOCK_1x1_2	= new Block((byte)2),
+				BLOCK_1x1_12	= new Block((byte)12);
 
 /* Immutables *************************/
 private static final Frame 		frame	= new Frame(TITLE);
 private static final Canvas		canvas	= new Canvas();
 private static final BufferedImage	font	= readImageFile(FONT_NAME);
-private static final byte[][][][]	board	=
-	new byte
-	[2]		// camera(s)
-	[LINE_LENGTH]	// x
-	[LINE_COUNT]	// y
-	[LINE_STACK];	// z
+private static final BufferedImage[]	layer	= new BufferedImage[LINE_STACK];
+static final Board[]			board	=
+	new Board[] {
+
+	new Board( // normal straight-on camera
+	new	LWH(
+		LINE_STACK,
+		LINE_LENGTH,
+		LINE_COUNT)),
+	new Board( // length and height swap for this top-down camera
+	new	LWH(
+		LINE_COUNT,
+		LINE_LENGTH,
+		LINE_STACK))
+	};
 
 /* Mutables ***************************/
 private static boolean		unloading;
@@ -109,10 +111,32 @@ short getMouseY() {
 //``````````````````````````````````````````````````````````````````````````````
 
 private static
+void place(
+final Block b,
+final XYZ dest) {
+
+	board[0].place(
+	b,
+	new	XYZ(
+		dest.x,
+		dest.y,
+		dest.z));
+
+	// adjust placement for top-down perspective
+	board[1].place(
+	b,
+	new	XYZ(
+		dest.x,
+		dest.z,
+		dest.y));
+}
+//``````````````````````````````````````````````````````````````````````````````
+
+private static
 void load()
 throws Exception {
 
-	canvas.setSize(CANVAS_WIDTH, CANVAS_HEIGHT);
+	canvas.setSize(SCREEN_WIDTH, SCREEN_HEIGHT);
 
 	frame.add(canvas);
 	frame.setResizable(false);
@@ -137,52 +161,63 @@ throws Exception {
 	frame.setLocationRelativeTo(null);
 	frame.setVisible(true);
 
-	for (byte z = (byte)(LINE_STACK - 1); z >= 0; --z) {
-	for (byte y = (byte)(LINE_COUNT - 1); y >= 0; --y) {
-	for (byte x = (byte)(LINE_LENGTH - 1); x >= 0; --x) {
-	for (byte s = 1; s >= 0; --s) {
+	place(
+	BLOCK_1x1_1,
+	new	XYZ(
+		(byte)0,
+		(byte)0,
+		(byte)0));
 
-	if (x == LINE_LENGTH - 1) {
-		if (y <= LINE_COUNT - 1 && y >= 0) {
-			if (y == LINE_COUNT - 1) {
-				board[s][x][y][z] = BOX_VB;
-				continue;
-			}
-			else if (y == 0) {
-				board[s][x][y][z] = BOX_VT;
-				continue;
-			}
-			else {
-				board[s][x][y][z] = BOX_V;
-				continue;
-			}
-		}
-	}
+	place(
+	BLOCK_1x1_1,
+	new	XYZ(
+		(byte)10,
+		(byte)15,
+		(byte)20));
 
-	board[s][x][y][z] = DOT;
-	}
-	}
-	}
-	}
+	place(
+	BLOCK_1x1_1,
+	new	XYZ(
+		(byte)20,
+		(byte)15,
+		(byte)10));
+
+	place(
+	BLOCK_1x1_1,
+	new	XYZ(
+		(byte)(LINE_LENGTH - 2),
+		(byte)(LINE_COUNT - 1),
+		(byte)(LINE_STACK - 6)));
+
+	loadLayers();
 }
 //``````````````````````````````````````````````````````````````````````````````
 
 private static
-void draw()
-throws Exception {
+void loadLayers() {
 
-	final Graphics2D g = (Graphics2D)bufferStrategy.getDrawGraphics();
-	g.setBackground(BG_COLOR);
-	g.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+	// x: camera 1, 2 - forward/reverse
+	// (IMPORTANT) these deal with depth perception
+	// y: camera 1, 2 - reverse
+	// l: camera 1, 2 - forward
+	for (byte l = 0; l < layer.length; ++l) {
 
-	for (byte z = (byte)(LINE_STACK - 1); z >= 0; --z) {
+	layer[l] =	new BufferedImage(
+			SCREEN_WIDTH,
+			SCREEN_HEIGHT,
+			BufferedImage.TYPE_INT_ARGB);
+
+	final Graphics2D g = (Graphics2D)layer[l].getGraphics();
+
+	/*
+	 * Left (straight-on) camera
+	 */
 	for (byte y = (byte)(LINE_COUNT - 1); y >= 0; --y) {
 	for (byte x = (byte)(LINE_LENGTH - 1); x >= 0; --x) {
-	for (byte c = 1; c >= 0; --c) {
 
-	final short	left	= (short)((c * CAMERA_WIDTH) + x * FONT_WIDTH),
+	final short	left	= (short)(x * FONT_WIDTH),
 			top	= (short)(y * FONT_HEIGHT),
-			tile	= (short)(board[c][x][y][z] * FONT_WIDTH);
+			tile	= (short)(board[0].getBlock(new XYZ(x, y, l)).character * FONT_WIDTH);
 
 	g.drawImage(
 	font,
@@ -195,10 +230,51 @@ throws Exception {
 	tile + FONT_WIDTH,
 	FONT_HEIGHT,
 	null);
+	}
+	}
 
+	/*
+	 * Right (top-down) camera
+	 */
+	for (byte y = (byte)(LINE_COUNT - 1); y >= 0; --y) {
+	for (byte x = (byte)(LINE_LENGTH - 1); x >= 0; --x) {
+
+	final short	left	= (short)(LINE_LENGTH * FONT_WIDTH + x * FONT_WIDTH),
+			top	= (short)(y * FONT_HEIGHT),
+			tile	= (short)(board[1].getBlock(new XYZ(x, y, l)).character * FONT_WIDTH);
+
+	g.drawImage(
+	font,
+	left,			// left
+	top,			// top
+	left + FONT_WIDTH,	// right
+	top + FONT_HEIGHT,	// bottom
+	tile,
+	0,
+	tile + FONT_WIDTH,
+	FONT_HEIGHT,
+	null);
 	}
 	}
 	}
+}
+//``````````````````````````````````````````````````````````````````````````````
+
+private static
+void draw()
+throws Exception {
+
+	final Graphics2D g = (Graphics2D)bufferStrategy.getDrawGraphics();
+	g.setBackground(BG_COLOR);
+	g.clearRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+
+	for (byte l = 0; l < layer.length; ++l) {
+
+	g.drawImage(
+	layer[l],
+	0,
+	0,
+	null);
 	}
 
 	g.dispose();
@@ -210,7 +286,7 @@ private static
 void loop()
 throws Exception {
 
-	long	timer15		= 0,
+	long	timer30		= 0,
 		timer1000	= 0,
 		timer2500	= 0;
 	byte	frameCounter	= 0;
@@ -225,10 +301,10 @@ throws Exception {
 		timer2500 = NOW + 2500;
 	}
 
-	if (timer15 < NOW) {
+	if (timer30 < NOW) {
 		draw();
 		++frameCounter;
-		timer15 = NOW + 15;
+		timer30 = NOW + 30;
 	}
 
 	++cycleCounter;
@@ -248,16 +324,8 @@ private static
 void unload()
 throws Exception {
 
-	for (byte z = (byte)(LINE_STACK - 1); z >= 0; --z) {	// depth
-	for (byte y = (byte)(LINE_COUNT - 1); y >= 0; --y) {	// height
-	for (byte x = (byte)(LINE_LENGTH - 1); x >= 0; --x) {	// width
-	for (byte c = 1; c >= 0; --c) {				// camera(s)
-
-		board[c][x][y][z] = 0;
-	}
-	}
-	}
-	}
+	//board[0]
+	//board[1]
 
 	font.flush();
 	bufferStrategy.dispose();
