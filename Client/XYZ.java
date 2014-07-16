@@ -30,4 +30,11 @@ final int z) {
 	this.y = (byte)y;
 	this.z = (byte)z;
 }
+//``````````````````````````````````````````````````````````````````````````````
+
+boolean equals(
+final XYZ xyz) {
+
+	return x == xyz.x && y == xyz.y && z == xyz.z;
+}
 }

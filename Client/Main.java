@@ -65,12 +65,16 @@ static final Board[]			board	=
 	};
 
 /* Mutables ***************************/
-private static boolean		unloading;
+private static boolean		unloading,
+				moving;
 
 private static BufferStrategy	bufferStrategy;
 private static BufferedImage	background,
 				middleground,
 				foreground;
+
+private static byte		lastCharX,
+				lastCharY;
 
 private static byte		framesPerSecond;
 private static int		cyclesPerSecond;
@@ -109,9 +113,8 @@ final String filename) {
 private static
 byte getMouseCharX() {
 
-	return	(byte)(((MouseInfo.getPointerInfo().getLocation().getX()
-		- canvas.getLocationOnScreen().getX()) / FONT_WIDTH)
-		% LINE_LENGTH);
+	return	(byte)((MouseInfo.getPointerInfo().getLocation().getX()
+		- canvas.getLocationOnScreen().getX()) / FONT_WIDTH);
 }
 //``````````````````````````````````````````````````````````````````````````````
         
@@ -128,8 +131,34 @@ void place(
 final Block b,
 final XYZ dest) {
 
-	board[0].place(b, new XYZ(dest.x, dest.y, dest.z)); // straight-on
+	board[0].place(b, dest); // straight-on (normal)
 	board[1].place(b, new XYZ(dest.x, dest.z, dest.y)); // top-down
+}
+//``````````````````````````````````````````````````````````````````````````````
+
+private static
+void move(
+final int sx,
+final int sy,
+final int dx,
+final int dy) {
+
+	for (byte l = (byte)(LINE_STACK - 1); l >= 0; --l) {
+
+	final XYZ xyzSrc	= new XYZ(sx % LINE_LENGTH, sx < LINE_LENGTH ? sy : l, sx < LINE_LENGTH ? l : sy);
+	final XYZ xyzDest	= new XYZ(dx % LINE_LENGTH, dx < LINE_LENGTH ? dy : l, dx < LINE_LENGTH ? l : dy);
+
+	if (board[sx / LINE_LENGTH].getBlock(xyzSrc).isEmpty()) continue;
+
+	board[0].move(xyzSrc, xyzDest); // straight-on
+	board[1].move(xyzSrc, xyzDest); // top-down
+
+	// log
+	lastCharX = getMouseCharX();
+	lastCharY = getMouseCharY();
+
+	return;
+	}
 }
 //``````````````````````````````````````````````````````````````````````````````
 
@@ -162,8 +191,26 @@ throws Exception {
 		final MouseEvent e) {
 
 			System.out.println(
-				"getMouseCharX(): " + getMouseCharX()
-				+ " | getMouseCharY(): " + getMouseCharY());
+				"(" + getMouseCharX() + ", " + getMouseCharY() + ")");
+		}
+
+		@Override
+		public void mousePressed(
+		final MouseEvent e) {
+
+			if (!moving) {
+				lastCharX = getMouseCharX();
+				lastCharY = getMouseCharY();
+			}
+
+			moving = true;
+		}
+
+		@Override
+		public void mouseReleased(
+		final MouseEvent e) {
+
+			moving = false;
 		}
 		});
 	canvas.setIgnoreRepaint(true);
@@ -263,6 +310,7 @@ void loop()
 throws Exception {
 
 	long	timer15		= 0,
+		timer30		= 0,
 		timer1000	= 0,
 		timer2500	= 0;
 	byte	frameCounter	= 0;
@@ -275,6 +323,11 @@ throws Exception {
 	if (timer2500 < NOW) {
 		if (unloading) return;
 		timer2500 = NOW + 2500;
+	}
+
+	if (timer30 < NOW) {
+		if (moving) move(lastCharX, lastCharY, getMouseCharX(), getMouseCharY());
+		timer30 = NOW + 30;
 	}
 
 	if (timer15 < NOW) {

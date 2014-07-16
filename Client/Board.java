@@ -59,6 +59,7 @@ void move(
 final XYZ src,
 final XYZ dest) {
 
+	if (src.equals(dest)) return;
 	if (!space[dest.x][dest.y][dest.z].isEmpty()) throw new RuntimeException("Can't move it there");
 	if (space[src.x][src.y][src.z].isEmpty()) throw new RuntimeException("Nothing to move");
 
