@@ -22,12 +22,12 @@ XYZ() {
 //``````````````````````````````````````````````````````````````````````````````
 
 XYZ(
-final byte x,
-final byte y,
-final byte z) {
+final int x,
+final int y,
+final int z) {
 
-	this.x = x;
-	this.y = y;
-	this.z = z;
+	this.x = (byte)x;
+	this.y = (byte)y;
+	this.z = (byte)z;
 }
 }

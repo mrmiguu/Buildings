@@ -19,16 +19,21 @@ class Main {
 
 /* Constants **************************/
 private static final String	TITLE		= "Buildings™";
-private static final Color	BG_COLOR	= new Color(51, 153, 255);
+
 private static final String	FONT_NAME	= "Courier";
 private static final byte	FONT_WIDTH	= 12,
 				FONT_HEIGHT	= 20;
+
 private static final double	RATIO		= 4.0 / 3.0;
+
 private static final byte	LINE_LENGTH	= 40,				// x
 				LINE_COUNT	= (byte)(LINE_LENGTH / RATIO),	// y
 				LINE_STACK	= LINE_COUNT;			// z
+
 private static final short	CAMERA_WIDTH	= LINE_LENGTH * FONT_WIDTH,
 				CAMERA_HEIGHT	= LINE_COUNT * FONT_HEIGHT;
+
+private static final Color	BG_COLOR	= new Color(51, 153, 255);
 private static final short	SCREEN_WIDTH	= CAMERA_WIDTH << 1,
 				SCREEN_HEIGHT	= CAMERA_HEIGHT;
 
@@ -40,8 +45,10 @@ private static final Block	BLOCK_1x1_1	= new Block(),
 /* Immutables *************************/
 private static final Frame 		frame	= new Frame(TITLE);
 private static final Canvas		canvas	= new Canvas();
+
 private static final BufferedImage	font	= readImageFile(FONT_NAME);
-private static final BufferedImage[]	layer	= new BufferedImage[LINE_STACK];
+//private static final BufferedImage[]	layer	= new BufferedImage[LINE_STACK];
+
 static final Board[]			board	=
 	new Board[] {
 
@@ -59,7 +66,12 @@ static final Board[]			board	=
 
 /* Mutables ***************************/
 private static boolean		unloading;
+
 private static BufferStrategy	bufferStrategy;
+private static BufferedImage	background,
+				middleground,
+				foreground;
+
 private static byte		framesPerSecond;
 private static int		cyclesPerSecond;
 //``````````````````````````````````````````````````````````````````````````````
@@ -115,20 +127,8 @@ void place(
 final Block b,
 final XYZ dest) {
 
-	board[0].place(
-	b,
-	new	XYZ(
-		dest.x,
-		dest.y,
-		dest.z));
-
-	// adjust placement for top-down perspective
-	board[1].place(
-	b,
-	new	XYZ(
-		dest.x,
-		dest.z,
-		dest.y));
+	board[0].place(b, new XYZ(dest.x, dest.y, dest.z)); // straight-on
+	board[1].place(b, new XYZ(dest.x, dest.z, dest.y)); // top-down
 }
 //``````````````````````````````````````````````````````````````````````````````
 
@@ -153,6 +153,16 @@ throws Exception {
 		}
 		});
 
+	canvas.addMouseListener(
+		new MouseAdapter() {
+
+		@Override
+		public void mouseClicked(
+		final MouseEvent e) {
+
+			
+		}
+		});
 	canvas.setIgnoreRepaint(true);
 	canvas.createBufferStrategy(2);
 
@@ -161,99 +171,67 @@ throws Exception {
 	frame.setLocationRelativeTo(null);
 	frame.setVisible(true);
 
-	place(
-	BLOCK_1x1_1,
-	new	XYZ(
-		(byte)0,
-		(byte)0,
-		(byte)0));
+	place(BLOCK_1x1_1, new XYZ(0, 0, 0));
+	place(BLOCK_1x1_1, new XYZ(10, 15, 20));
+	place(BLOCK_1x1_1, new XYZ(20, 15, 10));
+	place(BLOCK_1x1_1, new XYZ(LINE_LENGTH - 2, LINE_COUNT - 1, LINE_STACK - 6));
 
-	place(
-	BLOCK_1x1_1,
-	new	XYZ(
-		(byte)10,
-		(byte)15,
-		(byte)20));
-
-	place(
-	BLOCK_1x1_1,
-	new	XYZ(
-		(byte)20,
-		(byte)15,
-		(byte)10));
-
-	place(
-	BLOCK_1x1_1,
-	new	XYZ(
-		(byte)(LINE_LENGTH - 2),
-		(byte)(LINE_COUNT - 1),
-		(byte)(LINE_STACK - 6)));
-
-	loadLayers();
+	unlockMiddleground(LINE_STACK - 6);
+	//loadLayers();
 }
 //``````````````````````````````````````````````````````````````````````````````
 
 private static
-void loadLayers() {
+void unlockMiddleground(
+final int layer) {
 
-	// x: camera 1, 2 - forward/reverse
-	// (IMPORTANT) these deal with depth perception
-	// y: camera 1, 2 - reverse
-	// l: camera 1, 2 - forward
-	for (byte l = 0; l < layer.length; ++l) {
+	/*
+	 * Lock the layers behind to the
+	 * background and the layers in front
+	 * to the foreground
+	 */
 
-	layer[l] =	new BufferedImage(
+	background =
+		new BufferedImage(
+			SCREEN_WIDTH,
+			SCREEN_HEIGHT,
+			BufferedImage.TYPE_INT_ARGB);
+	middleground =
+		new BufferedImage(
+			SCREEN_WIDTH,
+			SCREEN_HEIGHT,
+			BufferedImage.TYPE_INT_ARGB);
+	foreground =
+		new BufferedImage(
 			SCREEN_WIDTH,
 			SCREEN_HEIGHT,
 			BufferedImage.TYPE_INT_ARGB);
 
-	final Graphics2D g = (Graphics2D)layer[l].getGraphics();
+	final Graphics2D bg = (Graphics2D)background.getGraphics();
+	final Graphics2D mg = (Graphics2D)middleground.getGraphics();
+	final Graphics2D fg = (Graphics2D)foreground.getGraphics();
 
-	/*
-	 * Left (straight-on) camera
-	 */
+	for (byte c = 0; c < board.length; ++c) {
+	for (byte l = 0; l < LINE_STACK; ++l) {
 	for (byte y = (byte)(LINE_COUNT - 1); y >= 0; --y) {
 	for (byte x = (byte)(LINE_LENGTH - 1); x >= 0; --x) {
 
-	final short	left	= (short)(x * FONT_WIDTH),
+	final short	left	= (short)(c * LINE_LENGTH * FONT_WIDTH + x * FONT_WIDTH),
 			top	= (short)(y * FONT_HEIGHT),
-			tile	= (short)(board[0].getBlock(new XYZ(x, y, l)).character * FONT_WIDTH);
+			tile	= (short)(board[c].getBlock(new XYZ(x, y, l)).character * FONT_WIDTH);
 
-	g.drawImage(
-	font,
-	left,			// left
-	top,			// top
-	left + FONT_WIDTH,	// right
-	top + FONT_HEIGHT,	// bottom
-	tile,
-	0,
-	tile + FONT_WIDTH,
-	FONT_HEIGHT,
-	null);
+	if (l > layer)
+		fg.drawImage(
+			font, left, top, left + FONT_WIDTH, top + FONT_HEIGHT,
+			tile, 0, tile + FONT_WIDTH, FONT_HEIGHT, null);
+	else if (l < layer)
+		bg.drawImage(
+			font, left, top, left + FONT_WIDTH, top + FONT_HEIGHT,
+			tile, 0, tile + FONT_WIDTH, FONT_HEIGHT, null);
+	else	mg.drawImage(
+			font, left, top, left + FONT_WIDTH, top + FONT_HEIGHT,
+			tile, 0, tile + FONT_WIDTH, FONT_HEIGHT, null);
 	}
-	}
-
-	/*
-	 * Right (top-down) camera
-	 */
-	for (byte y = (byte)(LINE_COUNT - 1); y >= 0; --y) {
-	for (byte x = (byte)(LINE_LENGTH - 1); x >= 0; --x) {
-
-	final short	left	= (short)(LINE_LENGTH * FONT_WIDTH + x * FONT_WIDTH),
-			top	= (short)(y * FONT_HEIGHT),
-			tile	= (short)(board[1].getBlock(new XYZ(x, y, l)).character * FONT_WIDTH);
-
-	g.drawImage(
-	font,
-	left,			// left
-	top,			// top
-	left + FONT_WIDTH,	// right
-	top + FONT_HEIGHT,	// bottom
-	tile,
-	0,
-	tile + FONT_WIDTH,
-	FONT_HEIGHT,
-	null);
 	}
 	}
 	}
@@ -268,14 +246,9 @@ throws Exception {
 	g.setBackground(BG_COLOR);
 	g.clearRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
-	for (byte l = 0; l < layer.length; ++l) {
-
-	g.drawImage(
-	layer[l],
-	0,
-	0,
-	null);
-	}
+	g.drawImage(background, 0, 0, null);
+	g.drawImage(middleground, 0, 0, null);
+	g.drawImage(foreground, 0, 0, null);
 
 	g.dispose();
 	bufferStrategy.show();

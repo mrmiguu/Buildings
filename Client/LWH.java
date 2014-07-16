@@ -23,13 +23,13 @@ LWH() {
 //``````````````````````````````````````````````````````````````````````````````
 
 LWH(
-final byte length,
-final byte width,
-final byte height) {
+final int length,
+final int width,
+final int height) {
 
-	this.length = length;
-	this.width = width;
-	this.height = height;
+	this.length = (byte)length;
+	this.width = (byte)width;
+	this.height = (byte)height;
 	volume = (short)(length * width * height);
 }
 }

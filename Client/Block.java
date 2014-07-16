@@ -39,23 +39,13 @@ byte	position;	// flat, side
 static
 Block empty() {
 
-	return	new Block(
-		new	LWH(
-			(byte)0,
-			(byte)0,
-			(byte)0),
-		DOT);
+	return new Block(new LWH(0, 0, 0), DOT);
 }
 //``````````````````````````````````````````````````````````````````````````````
 
 Block() {
 
-	this(
-	new	LWH(
-		(byte)1,
-		DEFAULT_WIDTH,
-		DEFAULT_HEIGHT),
-	BOX);
+	this(new LWH(1, DEFAULT_WIDTH, DEFAULT_HEIGHT), BOX);
 }
 //``````````````````````````````````````````````````````````````````````````````
 
