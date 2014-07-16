@@ -107,18 +107,19 @@ final String filename) {
 //``````````````````````````````````````````````````````````````````````````````
 
 private static
-short getMouseX() {
+byte getMouseCharX() {
 
-	return	(short)(MouseInfo.getPointerInfo().getLocation().getX()
-		- canvas.getLocationOnScreen().getX());
+	return	(byte)(((MouseInfo.getPointerInfo().getLocation().getX()
+		- canvas.getLocationOnScreen().getX()) / FONT_WIDTH)
+		% LINE_LENGTH);
 }
 //``````````````````````````````````````````````````````````````````````````````
         
 private static
-short getMouseY() {
+byte getMouseCharY() {
 
-	return	(short)(MouseInfo.getPointerInfo().getLocation().getY()
-		- canvas.getLocationOnScreen().getY());
+	return	(byte)((MouseInfo.getPointerInfo().getLocation().getY()
+		- canvas.getLocationOnScreen().getY()) / FONT_HEIGHT);
 }
 //``````````````````````````````````````````````````````````````````````````````
 
@@ -160,7 +161,9 @@ throws Exception {
 		public void mouseClicked(
 		final MouseEvent e) {
 
-			
+			System.out.println(
+				"getMouseCharX(): " + getMouseCharX()
+				+ " | getMouseCharY(): " + getMouseCharY());
 		}
 		});
 	canvas.setIgnoreRepaint(true);
