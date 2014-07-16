@@ -259,7 +259,7 @@ private static
 void loop()
 throws Exception {
 
-	long	timer30		= 0,
+	long	timer15		= 0,
 		timer1000	= 0,
 		timer2500	= 0;
 	byte	frameCounter	= 0;
@@ -274,10 +274,10 @@ throws Exception {
 		timer2500 = NOW + 2500;
 	}
 
-	if (timer30 < NOW) {
+	if (timer15 < NOW) {
 		draw();
 		++frameCounter;
-		timer30 = NOW + 30;
+		timer15 = NOW + 15;
 	}
 
 	++cycleCounter;
